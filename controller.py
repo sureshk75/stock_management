@@ -17,6 +17,7 @@ APP_ICON = app_path("icon.ico")
 
 
 class MainUI(QMainWindow):
+	_darkmode = False
 	_thread = None
 	_worker = None
 
@@ -26,13 +27,42 @@ class MainUI(QMainWindow):
 		self.setWindowTitle(APP_TITLE)
 		self.setWindowIcon(QIcon(APP_ICON))
 		self.resize(1280, 720)
+		self._item = [CustomStack(
+			version=APP_VERSION
+		)]
+		self.setCentralWidget(self._item[0])
+		self._item[0].displayChanged.connect(self.setDisplayMode)
 
+		# self._item.append(StackTab1())
+		# self._item[0].addWidget(self._item[-1], "Dashboard")
+
+		self._item.append(StackTab2())
+		self._item[0].addWidget(self._item[-1], "Delivery Order")
+
+		self._item.append(StackTab3())
+		self._item[0].addWidget(self._item[-1], "Products")
+
+		self._item.append(StackTab4())
+		self._item[0].addWidget(self._item[-1], "Clients")
+
+	@Slot(dict)
 	def setData(self, data):
-		print(">>>", data)
+		self._item[1].setData(data["delivery_order"])
+		self._item[2].setData(data["product"])
+		self._item[3].setData(data["client"])
 
+	@Slot(bool)
+	def setDisplayMode(self, state):
+		self._darkmode = state
+		# self._whatis.darkMode()
+		# self._whatif.darkMode()
+		# self._whathappened.darkMode(state=self._darkmode)
+		self.setStyleSheet(stylesheet(darkmode=self._darkmode))
+
+	@Slot(bool)
 	def setState(self, state):
 		if state:
-			# self.setStyleSheet(stylesheet())
+			self.setStyleSheet(stylesheet())
 			self.show()
 		else:
 			self.close()

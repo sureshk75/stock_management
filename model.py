@@ -24,6 +24,11 @@ def app_path(filename, directory="resource"):
 		return None
 
 
+def name_to_pix(text):
+	item = text.lower().replace(" ", "") + ".png"
+	return app_path(item)
+
+
 class Database:
 
 	def __init__(self):
@@ -41,7 +46,7 @@ class InitializeApp(QObject):
 
 	def run(self):
 		state = True
-		data = {}
+		data = {"product": {}, "client": {}, "delivery_order": {}}
 		if app_path(filename="data", directory="stored"):
 			fd = open(app_path(filename="data", directory="stored"), "r")
 			data = json.loads(fd.read())
