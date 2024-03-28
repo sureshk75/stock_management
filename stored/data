@@ -1,0 +1,187 @@
+{
+    "delivery": {
+        "0000": {
+            "index": "0000",
+            "client": "0000",
+            "order": "124578",
+            "date": 1711497600,
+            "details": {
+                "0000": {
+                    "index": "0000",
+                    "product": "0002",
+                    "location1": 1500,
+                    "location2": 6500
+                }
+            }
+        },
+        "0001": {
+            "index": "0001",
+            "client": "0001",
+            "order": "2344",
+            "date": 1711497600,
+            "details": {
+                "0000": {
+                    "index": "0000",
+                    "product": "0002",
+                    "location1": 1000,
+                    "location2": 0
+                },
+                "0001": {
+                    "index": "0001",
+                    "product": "0004",
+                    "location1": 201,
+                    "location2": 0
+                },
+                "0002": {
+                    "index": "0002",
+                    "product": "0003",
+                    "location1": 1000,
+                    "location2": 0
+                }
+            }
+        }
+    },
+    "product": {
+        "0000": {
+            "index": "0000",
+            "name": "Rhinestone Pen",
+            "sku": "874013",
+            "quantity": {
+                "0000": {
+                    "index": "0000",
+                    "source": "New Shipment",
+                    "amount": 10000,
+                    "date": 1711324800
+                },
+                "0001": {
+                    "index": "0001",
+                    "source": "Stock Adjustment",
+                    "amount": -1000,
+                    "date": 1711411200
+                }
+            },
+            "discontinued": false
+        },
+        "0001": {
+            "index": "0001",
+            "name": "Crystal Magnet 30cm",
+            "sku": "874000",
+            "quantity": {},
+            "discontinued": true
+        },
+        "0002": {
+            "index": "0002",
+            "name": "PetroSains Handy Fan",
+            "sku": "874005",
+            "quantity": {
+                "0000": {
+                    "index": "0000",
+                    "source": "New Shipment",
+                    "amount": 9999,
+                    "date": 1709251200
+                }
+            },
+            "discontinued": false
+        },
+        "0003": {
+            "index": "0003",
+            "name": "Postcard Set of 5",
+            "sku": "874006",
+            "quantity": {
+                "0000": {
+                    "index": "0000",
+                    "source": "New Shipment",
+                    "amount": 15000,
+                    "date": 1710201600
+                }
+            },
+            "discontinued": false
+        },
+        "0004": {
+            "index": "0004",
+            "name": "Tin Plate Magnet",
+            "sku": "874004",
+            "quantity": {},
+            "discontinued": false
+        },
+        "0005": {
+            "index": "0005",
+            "name": "Water Ring Game",
+            "sku": "874014",
+            "quantity": {
+                "0000": {
+                    "index": "0000",
+                    "source": "New Shipment",
+                    "amount": 10000,
+                    "date": 1709856000
+                },
+                "0001": {
+                    "index": "0001",
+                    "source": "Stock Adjustment",
+                    "amount": -2000,
+                    "date": 1710115200
+                },
+                "0002": {
+                    "index": "0002",
+                    "source": "New Shipment",
+                    "amount": 1500,
+                    "date": 1711497600
+                }
+            },
+            "discontinued": true
+        }
+    },
+    "client": {
+        "0000": {
+            "index": "0000",
+            "name": "Petronas Twin Towers Gift Shop",
+            "address1": "Lower Ground (Concourse) Level",
+            "address2": "Petronas Twin Towers",
+            "postcode": "50088",
+            "city": "Kuala Lumpur",
+            "state": "Wilayah Persekutuan",
+            "custom_sku": {
+                "0000": {
+                    "index": "0000",
+                    "product": "0003",
+                    "sku": "9855"
+                },
+                "0001": {
+                    "index": "0001",
+                    "product": "0000",
+                    "sku": "9888"
+                },
+                "0002": {
+                    "index": "0002",
+                    "product": "0002",
+                    "sku": "5623"
+                },
+                "0003": {
+                    "index": "0003",
+                    "product": "0004",
+                    "sku": "5875"
+                }
+            },
+            "location": {
+                "dual": true,
+                "label1": "Level 83",
+                "label2": "Gift Shop"
+            }
+        },
+        "0001": {
+            "index": "0001",
+            "name": "New Client",
+            "address1": "Address Line #1",
+            "address2": "Address Line #2",
+            "postcode": "47600",
+            "city": "Subang Jaya",
+            "state": "Selangor",
+            "custom_sku": {},
+            "location": {
+                "dual": false,
+                "label1": "",
+                "label2": ""
+            }
+        }
+    }
+}
