@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
 	QGraphicsDropShadowEffect, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QSizePolicy,
 	QSpinBox, QStyle, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 )
-# from comtypes.client import CreateObject
 from mailmerge import MailMerge
 
 
@@ -41,11 +40,13 @@ def name_to_pix(text):
 
 
 class Storage:
+	def __init__(self):
+		self._file = "data.json"
 
 	@property
 	def data(self):
-		if app_path(filename="data.json", directory="stored"):
-			fd = open(app_path(filename="data", directory="stored"), "r")
+		if app_path(filename=self._file, directory="stored"):
+			fd = open(app_path(filename=self._file, directory="stored"), "r")
 			data = json.loads(fd.read())
 			fd.close()
 		else:
@@ -57,20 +58,20 @@ class Storage:
 		tmp = self.data
 		for item in data:
 			tmp[item] = data[item]
-		fd = open(app_path(filename="data.json", directory="stored", write_file=True), "w")
+		fd = open(app_path(filename=self._file, directory="stored", write_file=True), "w")
 		json_object = json.dumps(tmp, indent=4)
 		fd.write(json_object)
 		fd.close()
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
-APP_TITLE = "Inventory & Stock Manager"
-APP_VERSION = "v0.0.3"
+APP_TITLE = "Kuna's Inventory & Stock Manager"
+APP_VERSION = "v1.0.0"
 APP_SPLASH = app_path("splash.png")
 APP_ICON = app_path("icon.ico")
 
 
-def stylesheet(darkmode=False):
+def stylesheet():
 	return f"""
 	/*----- All Widgets -----*/
 	*, *::pane {{
@@ -609,6 +610,10 @@ class BasePushButton(QPushButton):
 	def clear_all(self):
 		self.setText("")
 
+	def update_button(self, text, obj_name):
+		self.setText(text)
+		self.setObjectName(obj_name)
+
 
 class BaseSpinBox(QSpinBox):
 	def __init__(self, parent=None, min_value=1, max_value=999999):
@@ -798,14 +803,18 @@ class TreeItemCustomSKU(QTreeWidgetItem):
 		self.setTextAlignment(1, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
 		self.setTextAlignment(2, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
 		self.setTextAlignment(3, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
+		self.setTextAlignment(3, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
 
 	def updateData(self, data):
-
 		self.setData(0, Qt.ItemDataRole.UserRole, data)
 		self.setText(0, f"""{self.treeWidget().invisibleRootItem().childCount()}""")
 		self.setText(1, data["product_name"])
 		self.setText(2, data["product_sku"])
 		self.setText(3, data["client_sku"])
+		label = QLabel()
+		label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+		label.setPixmap(QPixmap(name_to_pix("no" if data["locked"] else "yes")))
+		self.treeWidget().setItemWidget(self, 4, label)
 
 	@property
 	def recordType(self):
@@ -829,7 +838,7 @@ class TreeItemDelivery(QTreeWidgetItem):
 		self.setText(1, data["order"])
 		self.setText(2, f"""{time.strftime("%d %b %Y", time.gmtime(data["date"]))}""")
 		self.setText(3, data["client"]["name"])
-		qty = sum(data["details"][i]["location1"]+data["details"][i]["location2"] for i in data["details"])
+		qty = sum(data["details"][i]["location1"] + data["details"][i]["location2"] for i in data["details"])
 		self.setText(4, f"""{qty:,}""")
 		label = QLabel()
 		label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -874,18 +883,20 @@ class TreeItemProduct(QTreeWidgetItem):
 		self.setTextAlignment(1, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
 		self.setTextAlignment(2, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
 		self.setTextAlignment(3, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
-		self.setTextAlignment(4, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
+		self.setTextAlignment(4, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
+		self.setTextAlignment(5, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
 
 	def updateData(self, data):
 		self.setData(0, Qt.ItemDataRole.UserRole, data)
 		self.setText(0, f"""{self.treeWidget().invisibleRootItem().childCount()}""")
 		self.setText(1, data["name"])
 		self.setText(2, data["sku"])
-		self.setText(3, f"""{sum(data["quantity"][i]["amount"] for i in data["quantity"]):,}""")
+		self.setText(3, f"""{data["price"]:,.2f}""")
+		self.setText(4, f"""{sum(data["quantity"][i]["amount"] for i in data["quantity"]):,}""")
 		label = QLabel()
 		label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 		label.setPixmap(QPixmap(name_to_pix("no" if data["discontinued"] else "yes")))
-		self.treeWidget().setItemWidget(self, 4, label)
+		self.treeWidget().setItemWidget(self, 5, label)
 
 	@property
 	def recordType(self):
@@ -900,6 +911,7 @@ class TreeItemStock(QTreeWidgetItem):
 		self.setTextAlignment(1, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
 		self.setTextAlignment(2, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
 		self.setTextAlignment(3, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
+		self.setTextAlignment(4, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
 
 	def updateData(self, data):
 		self.setData(0, Qt.ItemDataRole.UserRole, data)
@@ -907,6 +919,10 @@ class TreeItemStock(QTreeWidgetItem):
 		self.setText(1, f"""{time.strftime("%a, %d %b %Y", time.gmtime(data["date"]))}""")
 		self.setText(2, data["source"])
 		self.setText(3, f"""{data["amount"]:,}""")
+		label = QLabel()
+		label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+		label.setPixmap(QPixmap(name_to_pix("no" if data["locked"] else "yes")))
+		self.treeWidget().setItemWidget(self, 4, label)
 
 	@property
 	def recordType(self):
@@ -992,6 +1008,7 @@ class WidgetContainer(QFrame):
 class WidgetFileBrowser(QLineEdit):
 	def __init__(self, text, parent=None):
 		super().__init__(parent)
+		self.setProperty("prop_type", "0")
 		self.setContentsMargins(0, 0, 0, 0)
 		self.setPlaceholderText(text)
 		self.setReadOnly(True)
@@ -1046,6 +1063,7 @@ class WidgetToggle(QFrame):
 
 # MAIN -----------------------------------------------------------------------------------------------------------------
 class MainUI(QMainWindow):
+	# noinspection PyUnresolvedReferences
 	def __init__(self, parent=None):
 		super().__init__(parent)
 		self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -1325,18 +1343,24 @@ class MainUI(QMainWindow):
 		self.show()
 
 	def _generate_do_number(self):
-		spr = self._wgt[0][1].currentData(Qt.ItemDataRole.UserRole)
-		if self.tree1.selectedItems() and spr:
-			data = self.tree1.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
-			if data["supplier"]["index"] != spr:
+		spr = self._wgt[0][1].variable
+		if spr:
+			if self._wgt[-2].text() == "Add":
 				idx = sum(1 for i in self._data["delivery"] if self._data["delivery"][i]["supplier"] == spr)
 				self._wgt[0][3].variable = f"""{1 + idx:08}"""
+			else:
+				if self.tree1.selectedItems():
+					data = self.tree1.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
+					if data["supplier"]["index"] != spr:
+						idx = sum(1 for i in self._data["delivery"] if self._data["delivery"][i]["supplier"] == spr)
+						self._wgt[0][3].variable = f"""{1 + idx:08}"""
+					else:
+						self._wgt[0][3].variable = data["order"]
 
 	def _update_available_stock_and_price(self):
-		idx = self._wgt[1][0].currentData(Qt.ItemDataRole.UserRole)
+		idx = self._wgt[1][0].variable
 		if self.tree1.selectedItems() and idx:
 			data = self.tree1.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)["product"][idx]
-			print(data)
 			self._wgt[1][1].variable = f"""{data["quantity"]:,}"""
 			self._wgt[1][2].variable = f"""{data["price"]:,.2f}"""
 
@@ -1354,7 +1378,7 @@ class MainUI(QMainWindow):
 		if index == self._grp.checkedId():
 			self._reset_view()
 			match index:
-				case 0:
+				case 0:  # Delivery Order
 					self.tree1.set_headers(["No", "DO Number", "Date", "Client", "Total", "Generated", ""])
 					self.tree2.set_headers(["No", "Product", "Product SKU", "Client SKU", "Price", "Quantity", ""])
 					buttons = [
@@ -1365,25 +1389,25 @@ class MainUI(QMainWindow):
 						["Add Item", "new_item", 4],
 						["Edit Item", "edit_item", 5]
 					]
-				case 1:
-					self.tree1.set_headers(["No", "Product", "SKU", "Quantity", "In Distribution", ""])
-					self.tree2.set_headers(["No", "Date", "Source", "Quantity", ""])
+				case 1:  # Products
+					self.tree1.set_headers(["No", "Product", "SKU", "Price", "Quantity", "In Distribution", ""])
+					self.tree2.set_headers(["No", "Date", "Source", "Quantity", "Editable", ""])
 					buttons = [
 						["New Product", "new_product", 0],
 						["Edit Product", "edit_product", 1],
 						["Add Stock", "new_stock", 4],
 						["Edit Stock", "edit_stock", 5]
 					]
-				case 2:
+				case 2:  # Clients
 					self.tree1.set_headers(["No", "Name", "Custom SKU", "Dual Locations", "Price in DO", ""])
-					self.tree2.set_headers(["No", "Product", "Product SKU", "Client SKU", ""])
+					self.tree2.set_headers(["No", "Product", "Product SKU", "Client SKU", "In Distribution", ""])
 					buttons = [
 						["New Client", "new_client", 0],
 						["Edit Client", "edit_client", 1],
 						["Add Client SKU", "new_client_sku", 4],
 						["Edit Client SKU", "edit_client_sku", 5]
 					]
-				case _:
+				case _:  # Supplier
 					self.tree1.set_headers(["No", "Name", ""])
 					self.tree2.set_headers(["No", "Template", "File Location", ""])
 					buttons = [
@@ -1408,41 +1432,43 @@ class MainUI(QMainWindow):
 		self._pnl[2].setVisible(False)
 		match self.sender().objectName():
 			case "new_delivery":
-				self._wgt[0][1].blockSignals(True)
+				self._wgt[-2].update_button("Add", "add_delivery")
 				curr_ctr = 0
 				for item in self._wgt[curr_ctr]:
 					item.clear_all()
-				for k, v in sorted(self._data["client"].items(), key=lambda x:x[1]["name"]):
+				for k, v in sorted(self._data["client"].items(), key=lambda x: x[1]["name"]):
 					self._wgt[curr_ctr][0].addItem(v["name"], userData=k)
-				for k, v in sorted(self._data["supplier"].items(), key=lambda x:x[1]["name"]):
+				self._wgt[0][1].blockSignals(True)
+				for k, v in sorted(self._data["supplier"].items(), key=lambda x: x[1]["name"]):
 					self._wgt[curr_ctr][1].addItem(v["name"], userData=k)
-				self._generate_do_number()
-				self._wgt[-2].setText("Add")
-				self._wgt[-2].setObjectName("add_delivery")
 				self._wgt[0][1].blockSignals(False)
+				self._generate_do_number()
 			case "edit_delivery":
 				if self.tree1.selectedItems():
-					self._wgt[0][1].blockSignals(True)
+					self._wgt[-2].update_button("Update", "update_delivery")
 					curr_ctr = 0
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
 					for k, v in sorted(self._data["client"].items(), key=lambda x: x[1]["name"]):
 						self._wgt[curr_ctr][0].addItem(v["name"], userData=k)
+					self._wgt[0][1].blockSignals(True)
 					for k, v in sorted(self._data["supplier"].items(), key=lambda x: x[1]["name"]):
 						self._wgt[curr_ctr][1].addItem(v["name"], userData=k)
+					self._wgt[0][1].blockSignals(False)
 					data = self.tree1.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
 					self._wgt[curr_ctr][0].variable = data["client"]["name"]
+					self._wgt[0][1].blockSignals(True)
 					self._wgt[curr_ctr][1].variable = data["supplier"]["name"]
-					self._wgt[curr_ctr][2].variable = data["date"]
-					self._wgt[curr_ctr][3].variable = data["order"]
-					self._wgt[-2].setText("Update")
-					self._wgt[-2].setObjectName("update_delivery")
 					self._wgt[0][1].blockSignals(False)
+					self._wgt[curr_ctr][2].variable = data["date"]
+					# self._wgt[curr_ctr][3].variable = data["order"]
+					self._generate_do_number()
 				else:
 					disable_main = False
 					disable_content = False
 			case "new_item":
 				if self.tree1.selectedItems():
+					self._wgt[-2].update_button("Add", "add_item")
 					curr_ctr = 1
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
@@ -1462,13 +1488,12 @@ class MainUI(QMainWindow):
 						self._wgt[curr_ctr][5].variable = ""
 						self._wgt[curr_ctr][5].setVisible(False)
 						self._wgt[curr_ctr][6].setVisible(False)
-					self._wgt[-2].setText("Add")
-					self._wgt[-2].setObjectName("add_item")
 				else:
 					disable_main = False
 					disable_content = False
 			case "edit_item":
 				if self.tree1.selectedItems() and self.tree2.selectedItems():
+					self._wgt[-2].update_button("Update", "update_item")
 					curr_ctr = 1
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
@@ -1477,33 +1502,30 @@ class MainUI(QMainWindow):
 						if not v["discontinued"]:
 							self._wgt[curr_ctr][0].addItem(v["name"], userData=k)
 					if data["client"]["location"]["dual"]:
-						self._wgt[curr_ctr][1].variable = f"""{data["client"]["location"]["label1"]} Quantity:"""
-						self._wgt[curr_ctr][3].variable = f"""{data["client"]["location"]["label2"]} Quantity:"""
-						self._wgt[curr_ctr][3].setVisible(True)
-						self._wgt[curr_ctr][4].setVisible(True)
+						self._wgt[curr_ctr][3].variable = f"""{data["client"]["location"]["label1"]} Quantity:"""
+						self._wgt[curr_ctr][5].variable = f"""{data["client"]["location"]["label2"]} Quantity:"""
+						self._wgt[curr_ctr][5].setVisible(True)
+						self._wgt[curr_ctr][6].setVisible(True)
 					else:
-						self._wgt[curr_ctr][1].variable = "Quantity:"
-						self._wgt[curr_ctr][3].variable = ""
-						self._wgt[curr_ctr][3].setVisible(False)
-						self._wgt[curr_ctr][4].setVisible(False)
+						self._wgt[curr_ctr][3].variable = "Quantity:"
+						self._wgt[curr_ctr][5].variable = ""
+						self._wgt[curr_ctr][5].setVisible(False)
+						self._wgt[curr_ctr][6].setVisible(False)
 					data = self.tree2.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
-					print(">>", data)
 					self._wgt[curr_ctr][0].variable = data["product_name"]
-					self._wgt[curr_ctr][2].variable = data["location1"]
-					self._wgt[curr_ctr][4].variable = data["location2"]
-					self._wgt[-2].setText("Update")
-					self._wgt[-2].setObjectName("update_item")
+					self._wgt[curr_ctr][4].variable = data["location1"]
+					self._wgt[curr_ctr][6].variable = data["location2"]
 				else:
 					disable_main = False
 					disable_content = False
 			case "new_product":
+				self._wgt[-2].update_button("Add", "add_product")
 				curr_ctr = 2
 				for item in self._wgt[curr_ctr]:
 					item.clear_all()
-				self._wgt[-2].setText("Add")
-				self._wgt[-2].setObjectName("add_product")
 			case "edit_product":
 				if self.tree1.selectedItems():
+					self._wgt[-2].update_button("Update", "update_product")
 					curr_ctr = 2
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
@@ -1512,25 +1534,23 @@ class MainUI(QMainWindow):
 					self._wgt[curr_ctr][1].variable = data["sku"]
 					self._wgt[curr_ctr][2].variable = data["price"]
 					self._wgt[curr_ctr][3].variable = data["discontinued"]
-					self._wgt[-2].setText("Update")
-					self._wgt[-2].setObjectName("update_product")
 				else:
 					disable_main = False
 					disable_content = False
 			case "new_stock":
 				if self.tree1.selectedItems():
+					self._wgt[-2].update_button("Add", "add_stock")
 					curr_ctr = 3
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
 					for item in ("New Shipment", "Stock Adjustment"):
 						self._wgt[curr_ctr][0].addItem(item, userData=item)
-					self._wgt[-2].setText("Add")
-					self._wgt[-2].setObjectName("add_stock")
 				else:
 					disable_main = False
 					disable_content = False
 			case "edit_stock":
 				if self.tree1.selectedItems() and self.tree2.selectedItems():
+					self._wgt[-2].update_button("Save", "save_stock")
 					curr_ctr = 3
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
@@ -1540,19 +1560,17 @@ class MainUI(QMainWindow):
 					self._wgt[curr_ctr][0].variable = data["source"]
 					self._wgt[curr_ctr][1].variable = data["amount"]
 					self._wgt[curr_ctr][2].variable = data["date"]
-					self._wgt[-2].setText("Save")
-					self._wgt[-2].setObjectName("save_stock")
 				else:
 					disable_main = False
 					disable_content = False
 			case "new_client":
+				self._wgt[-2].update_button("Add", "add_client")
 				curr_ctr = 4
 				for item in self._wgt[curr_ctr]:
 					item.clear_all()
-				self._wgt[-2].setText("Add")
-				self._wgt[-2].setObjectName("add_client")
 			case "edit_client":
 				if self.tree1.selectedItems():
+					self._wgt[-2].update_button("Update", "update_client")
 					curr_ctr = 4
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
@@ -1566,13 +1584,13 @@ class MainUI(QMainWindow):
 					self._wgt[curr_ctr][6].variable = data["location"]["dual"]
 					self._wgt[curr_ctr][7].variable = data["location"]["label1"]
 					self._wgt[curr_ctr][8].variable = data["location"]["label2"]
-					self._wgt[-2].setText("Update")
-					self._wgt[-2].setObjectName("update_client")
+					self._wgt[curr_ctr][9].variable = data["show_price"]
 				else:
 					disable_main = False
 					disable_content = False
 			case "new_client_sku":
 				if self.tree1.selectedItems():
+					self._wgt[-2].update_button("Add", "add_client_sku")
 					curr_ctr = 5
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
@@ -1581,35 +1599,32 @@ class MainUI(QMainWindow):
 					for k, v in sorted(self._data["product"].items(), key=lambda x: x[1]["name"]):
 						if not v["discontinued"] and k not in used:
 							self._wgt[curr_ctr][0].addItem(v["name"], userData=k)
-					self._wgt[-2].setText("Add")
-					self._wgt[-2].setObjectName("add_client_sku")
 				else:
 					disable_main = False
 					disable_content = False
 			case "edit_client_sku":
 				if self.tree1.selectedItems() and self.tree2.selectedItems():
+					self._wgt[-2].update_button("Save", "save_client_sku")
 					curr_ctr = 5
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
 					data = self.tree2.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
 					self._wgt[curr_ctr][0].addItem(data["product_name"], userData=data["product_index"])
 					self._wgt[curr_ctr][1].variable = data["client_sku"]
-					self._wgt[-2].setText("Save")
-					self._wgt[-2].setObjectName("save_client_sku")
 				else:
 					disable_main = False
 					disable_content = False
 			case "new_supplier":
+				self._wgt[-2].update_button("Add", "add_supplier")
 				curr_ctr = 6
 				for item in self._wgt[curr_ctr]:
 					item.clear_all()
 				if not self._wgt[curr_ctr][1].parent().isEnabled():
 					self._wgt[curr_ctr][1].parent().setEnabled(True)
 					self._wgt[curr_ctr][2].setEnabled(True)
-				self._wgt[-2].setText("Add")
-				self._wgt[-2].setObjectName("add_supplier")
 			case "edit_supplier":
 				if self.tree1.selectedItems():
+					self._wgt[-2].update_button("Update", "update_supplier")
 					curr_ctr = 6
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
@@ -1618,17 +1633,14 @@ class MainUI(QMainWindow):
 					data = self.tree1.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
 					self._wgt[curr_ctr][0].variable = data["name"]
 					self._wgt[curr_ctr][1].variable = data["template"]
-					self._wgt[-2].setText("Update")
-					self._wgt[-2].setObjectName("update_supplier")
 			case "replace_template":
 				if self.tree1.selectedItems() and self.tree2.selectedItems():
+					self._wgt[-2].update_button("Replace", "replace_template")
 					curr_ctr = 7
 					for item in self._wgt[curr_ctr]:
 						item.clear_all()
 					data = self.tree2.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
 					self._wgt[curr_ctr][0].variable = data
-					self._wgt[-2].setText("Replace")
-					self._wgt[-2].setObjectName("replace_template")
 			case "open_template":
 				if self.tree1.selectedItems() and self.tree2.selectedItems():
 					data = self.tree2.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
@@ -1638,23 +1650,27 @@ class MainUI(QMainWindow):
 			case "generate_delivery":
 				if self.tree1.selectedItems():
 					data = self.tree1.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
-					for item in data:
-						print(item, data[item])
-					label1 = "Price"
+					label1 = ""
 					label2 = "Quantity"
-					dual = data["client"]["location"]["dual"]
-					if dual:
+					if data["client"]["show_price"]:
+						label1 = "Price"
+					elif data["client"]["location"]["dual"]:
 						label1 = f"""Quantity\n{data["client"]["location"]["label1"]}"""
 						label2 = f"""Quantity\n{data["client"]["location"]["label2"]}"""
 					qty = {}
 					for i in data["details"]:
 						lk = data["details"][i]
-						qty[lk["product"]] = [
-							lk["location1"] if dual else data["product"][lk["product"]]["price"],
-							lk["location2"] if dual else lk["location1"]
-						]
+						if data["client"]["show_price"]:
+							qty[lk["product"]] = [
+								f"""{data["product"][lk["product"]]["price"]:,.2f}""",
+								f"""{lk["location1"]:,}"""
+							]
+						elif data["client"]["location"]["dual"]:
+							qty[lk["product"]] = [f"""{lk["location1"]:,}""", f"""{lk["location2"]:,}"""]
+						else:
+							qty[lk["product"]] = ["", f"""{lk["location1"]:,}"""]
 					items = []
-					for k, v in sorted(data["product"].items(), key=lambda x:x[1]["name"]):
+					for k, v in sorted(data["product"].items(), key=lambda x: x[1]["name"]):
 						items.append({
 							"count": len(items) + 1,
 							"client_sku": v["client_sku"],
@@ -1687,16 +1703,16 @@ class MainUI(QMainWindow):
 					template.merge_templates(
 						[
 							{
-								"do_number" : output["do_number"],
-								"do_date" : output["do_date"],
-								"client_name" : output["client_name"],
-								"client_address1" : output["client_address1"],
-								"client_address2" : output["client_address2"],
-								"client_postcode" : output["client_postcode"],
-								"client_city" : output["client_city"],
-								"client_state" : output["client_state"],
-								"label1" : output["label1"],
-								"label2" : output["label2"],
+								"do_number": output["do_number"],
+								"do_date": output["do_date"],
+								"client_name": output["client_name"],
+								"client_address1": output["client_address1"],
+								"client_address2": output["client_address2"],
+								"client_postcode": output["client_postcode"],
+								"client_city": output["client_city"],
+								"client_state": output["client_state"],
+								"label1": output["label1"],
+								"label2": output["label2"],
 								"count": output["items"]
 							}
 						],
@@ -1705,18 +1721,28 @@ class MainUI(QMainWindow):
 
 					# Update Data
 					self._data["delivery"][data["index"]]["document"] = document
-					for i in data["details"]:
-						# lk = data["details"][i]["product"]
-						idx = f"""{len(self._data["product"][data["details"][i]["product"]]["quantity"]):04}"""
-						self._data["product"][data["details"][i]["product"]]["quantity"][idx] = {
-							"index": idx,
-							"source": f"""[{output["do_number"]}] {output["client_name"]}""",
-							"amount": data["details"][i]["location1"] + data["details"][i]["location2"],
-							"date": data["date"]
-						}
+					if not self._data["delivery"][data["index"]]["committed"]:
+						for i in data["details"]:
+							idx = f"""{len(self._data["product"][data["details"][i]["product"]]["quantity"]):04}"""
+							self._data["product"][data["details"][i]["product"]]["quantity"][idx] = {
+								"index": idx,
+								"source": f"""[{output["do_number"]}] {output["client_name"]}""",
+								"amount": data["details"][i]["location1"] + data["details"][i]["location2"],
+								"date": data["date"],
+								"locked": True
+							}
+						self._data["delivery"][data["index"]]["committed"] = True
 					self._tree1_item_refresh(0)
 					for idx in range(2, len(self._pnl)):
 						self._pnl[idx].setVisible(False)
+					disable_main = False
+					disable_content = False
+			case "open_document":
+				if self.tree1.selectedItems():
+					data = self.tree1.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
+					subprocess.run(["open", data["document"]], check=True)
+					disable_main = False
+					disable_content = False
 			case _:
 				disable_main = False
 				disable_content = False
@@ -1746,7 +1772,8 @@ class MainUI(QMainWindow):
 						"date": self._wgt[ctr][2].variable,
 						"order": self._wgt[ctr][3].variable,
 						"details": {},
-						"document": ""
+						"document": "",
+						"committed": False
 					}
 					self._tree1_item_refresh(0)
 					reset_views = True
@@ -1817,7 +1844,8 @@ class MainUI(QMainWindow):
 						"index": idx2,
 						"source": self._wgt[ctr][0].variable,
 						"amount": qty,
-						"date": self._wgt[ctr][2].variable
+						"date": self._wgt[ctr][2].variable,
+						"locked": False
 					}
 					self._tree1_item_refresh(1)
 					reset_views = True
@@ -1828,7 +1856,8 @@ class MainUI(QMainWindow):
 						"index": idx2,
 						"source": self._wgt[ctr][0].variable,
 						"amount": qty,
-						"date": self._wgt[ctr][2].variable
+						"date": self._wgt[ctr][2].variable,
+						"locked": False
 					}
 					self._tree1_item_refresh(1)
 					reset_views = True
@@ -1938,7 +1967,7 @@ class MainUI(QMainWindow):
 		self.tree1.clear()
 		self.tree2.clear()
 		match index:
-			case 0:
+			case 0:  # Delivery Order
 				for i in sorted(self._data["delivery"], reverse=True):
 					data = self._data["delivery"][i].copy()
 					data["client"] = self._data["client"][data["client"]].copy()
@@ -1958,13 +1987,13 @@ class MainUI(QMainWindow):
 								"quantity": sum(lk["quantity"][j]["amount"] for j in lk["quantity"])
 							}
 					TreeItemDelivery(parent=self.tree1, data=data)
-			case 1:
+			case 1:  # Products
 				for i in sorted(self._data["product"], reverse=True):
 					TreeItemProduct(parent=self.tree1, data=self._data["product"][i])
-			case 2:
+			case 2:  # Clients
 				for i in sorted(self._data["client"], reverse=True):
 					TreeItemClient(parent=self.tree1, data=self._data["client"][i])
-			case _:
+			case _:  # Supplier
 				for i in sorted(self._data["supplier"], reverse=True):
 					TreeItemSupplier(parent=self.tree1, data=self._data["supplier"][i])
 		self.tree1.resize_tree()
@@ -1981,7 +2010,7 @@ class MainUI(QMainWindow):
 			idx = item.data(0, Qt.ItemDataRole.UserRole)["index"]
 			tmp = {}
 			match item.recordType:
-				case "delivery":
+				case "delivery":  # Delivery Order
 					client_lk = self._data[item.recordType][idx]["client"]
 					for i in self._data[item.recordType][idx]["details"]:
 						prod_lk = self._data[item.recordType][idx]["details"][i]["product"]
@@ -2002,19 +2031,21 @@ class MainUI(QMainWindow):
 						TreeItemItems(parent=self.tree2, data=tmp[i])
 					for i in (self._hdr[1], self._hdr[4]):
 						i.setDisabled(True if self._data[item.recordType][idx]["document"] else False)
+					self._hdr[2].setDisabled(False if int(item.text(4).replace(",", "")) else True)
 					self._hdr[3].setDisabled(False if self._data[item.recordType][idx]["document"] else True)
-				case "product":
+				case "product":  # Products
 					for i in self._data[item.recordType][idx]["quantity"]:
 						tmp[f"""{self._data[item.recordType][idx]["quantity"][i]["date"]}_{i}"""] = {
 							"index": self._data[item.recordType][idx]["quantity"][i]["index"],
 							"date": self._data[item.recordType][idx]["quantity"][i]["date"],
 							"source": self._data[item.recordType][idx]["quantity"][i]["source"],
-							"amount": self._data[item.recordType][idx]["quantity"][i]["amount"]
+							"amount": self._data[item.recordType][idx]["quantity"][i]["amount"],
+							"locked": self._data[item.recordType][idx]["quantity"][i]["locked"]
 						}
 					for i in sorted(tmp, reverse=True):
 						TreeItemStock(parent=self.tree2, data=tmp[i])
 					self._hdr[4].setDisabled(self._data[item.recordType][idx]["discontinued"])
-				case "client":
+				case "client":  # Clients
 					for i in self._data[item.recordType][idx]["custom_sku"]:
 						prod_lk = self._data[item.recordType][idx]["custom_sku"][i]["product"]
 						tmp[self._data["product"][prod_lk]["name"]] = {
@@ -2022,18 +2053,25 @@ class MainUI(QMainWindow):
 							"product_name": self._data["product"][prod_lk]["name"],
 							"product_index": self._data["product"][prod_lk]["index"],
 							"product_sku": self._data["product"][prod_lk]["sku"],
-							"client_sku": self._data[item.recordType][idx]["custom_sku"][i]["sku"]
+							"client_sku": self._data[item.recordType][idx]["custom_sku"][i]["sku"],
+							"locked": self._data["product"][prod_lk]["discontinued"]
 						}
 					for i in sorted(tmp, reverse=True):
 						TreeItemCustomSKU(parent=self.tree2, data=tmp[i])
-				case _:
+				case _:  # Supplier
 					TreeItemTemplate(parent=self.tree2, data=self._data[item.recordType][idx]["template"])
 			self.tree2.resize_tree()
 
 	def _tree2_item_selected(self):
-		if self.tree2.selectedItems():
+		if self.tree1.selectedItems() and self.tree2.selectedItems():
 			for item in (self._hdr[5], self._hdr[6]):
 				item.setEnabled(True if item.isVisible() else False)
+			data = self.tree2.selectedItems()[0].data(0, Qt.ItemDataRole.UserRole)
+			if (
+					(self.tree1.selectedItems()[0].recordType == "product" and "locked" in data) or
+					(self.tree1.selectedItems()[0].recordType == "client" and "locked" in data)
+			):
+				self._hdr[5].setDisabled(data["locked"])
 
 
 if __name__ == "__main__":
