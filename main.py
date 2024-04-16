@@ -18,9 +18,14 @@ from PySide6.QtWidgets import (
 from mailmerge import MailMerge
 
 
+APP_TITLE = "Kuna's Inventory & Stock Manager"
+APP_VERSION = "v1.0.0"
+APP_FOLDER = "Inventory & Stock Manager"
+
+
 def app_path(filename, directory="resource", write_file=False, root_folder=False):
 	if root_folder:
-		base_path = os.path.join(os.path.expanduser("~"), directory)
+		base_path = os.path.join(os.path.join(os.path.expanduser("~"), APP_FOLDER), directory)
 	else:
 		base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), directory)
 	if not os.path.exists(base_path):
@@ -45,8 +50,10 @@ class Storage:
 
 	@property
 	def data(self):
-		if app_path(filename=self._file, directory="stored"):
-			fd = open(app_path(filename=self._file, directory="stored"), "r")
+		# if app_path(filename=self._file, directory="stored", root_folder=True):
+		# 	fd = open(app_path(filename=self._file, directory="stored"), "r")
+		if file := app_path(filename=self._file, directory="stored", root_folder=True):
+			fd = open(file, "r")
 			data = json.loads(fd.read())
 			fd.close()
 		else:
@@ -58,19 +65,13 @@ class Storage:
 		tmp = self.data
 		for item in data:
 			tmp[item] = data[item]
-		fd = open(app_path(filename=self._file, directory="stored", write_file=True), "w")
+		fd = open(app_path(filename=self._file, directory="stored", write_file=True, root_folder=True), "w")
 		json_object = json.dumps(tmp, indent=4)
 		fd.write(json_object)
 		fd.close()
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
-APP_TITLE = "Kuna's Inventory & Stock Manager"
-APP_VERSION = "v1.0.0"
-APP_SPLASH = app_path("splash.png")
-APP_ICON = app_path("icon.ico")
-
-
 def stylesheet():
 	return f"""
 	/*----- All Widgets -----*/
@@ -115,10 +116,9 @@ def stylesheet():
 		font-size: 13px;
 		font-weight: 500;
 		height: 13px;
-		padding-right: 8px; 
-		padding-left: 8px;
-		padding-top: 4px;
-		padding-bottom: 4px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		min-width: 8em;
 	}}
 	QAbstractButton[prop_type="2"]:disabled {{
 		background: rgba(0, 139, 204, 0.3);
@@ -1068,7 +1068,7 @@ class MainUI(QMainWindow):
 		super().__init__(parent)
 		self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 		self.setWindowTitle(APP_TITLE)
-		self.setWindowIcon(QIcon(APP_ICON))
+		self.setWindowIcon(QIcon(app_path("icon.ico")))
 		self.resize(1280, 720)
 
 		# Set Up Widgets -----------------------------------------------------------------------------------------------
@@ -1384,7 +1384,7 @@ class MainUI(QMainWindow):
 					buttons = [
 						["New Order", "new_delivery", 0],
 						["Edit Order", "edit_delivery", 1],
-						["Generate Document", "generate_delivery", 2],
+						["Generate Order", "generate_delivery", 2],
 						["Open in MS-Word", "open_document", 3],
 						["Add Item", "new_item", 4],
 						["Edit Item", "edit_item", 5]
@@ -1671,13 +1671,14 @@ class MainUI(QMainWindow):
 							qty[lk["product"]] = ["", f"""{lk["location1"]:,}"""]
 					items = []
 					for k, v in sorted(data["product"].items(), key=lambda x: x[1]["name"]):
-						items.append({
-							"count": len(items) + 1,
-							"client_sku": v["client_sku"],
-							"product_name": v["name"],
-							"quantity1": qty[k][0] if k in qty else "",
-							"quantity2": qty[k][1] if k in qty else ""
-						})
+						if k in qty:
+							items.append({
+								"count": len(items) + 1,
+								"client_sku": v["client_sku"],
+								"product_name": v["name"],
+								"quantity1": qty[k][0],
+								"quantity2": qty[k][1]
+							})
 					output = {
 						"client_name": data["client"]["name"],
 						"client_address1": data["client"]["address1"],
@@ -1695,7 +1696,7 @@ class MainUI(QMainWindow):
 					# Generate Document
 					document = app_path(
 						filename=f"""{output["do_number"]}.doc""",
-						directory=f"""{APP_TITLE}/{output["client_name"]}""",
+						directory=f"""documents/{output["client_name"]}""",
 						write_file=True,
 						root_folder=True
 					)
@@ -1727,7 +1728,7 @@ class MainUI(QMainWindow):
 							self._data["product"][data["details"][i]["product"]]["quantity"][idx] = {
 								"index": idx,
 								"source": f"""[{output["do_number"]}] {output["client_name"]}""",
-								"amount": data["details"][i]["location1"] + data["details"][i]["location2"],
+								"amount": -(data["details"][i]["location1"] + data["details"][i]["location2"]),
 								"date": data["date"],
 								"locked": True
 							}
@@ -1928,7 +1929,7 @@ class MainUI(QMainWindow):
 				src = self._wgt[ctr][1].variable
 				if sdr == "add_supplier" and spr and src:
 					idx = f"""{len(self._data["supplier"]):04}"""
-					dst = app_path(filename=f"""{idx}.docx""", directory="templates", write_file=True)
+					dst = app_path(filename=f"""{idx}.docx""", directory="templates", write_file=True, root_folder=True)
 					shutil.copy(src, dst)
 					self._data["supplier"][idx] = {
 						"index": idx,
@@ -2076,7 +2077,7 @@ class MainUI(QMainWindow):
 
 if __name__ == "__main__":
 	app = QApplication()
-	app.setWindowIcon(QIcon(APP_ICON))
+	app.setWindowIcon(QIcon(app_path("icon.ico")))
 	main = MainUI()
 	main.setStyleSheet(stylesheet())
 	app.exec()
