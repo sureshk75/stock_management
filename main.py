@@ -119,6 +119,7 @@ def stylesheet():
 		padding-top: 8px;
 		padding-bottom: 8px;
 		min-width: 8em;
+		min-height: 1em;
 	}}
 	QAbstractButton[prop_type="2"]:disabled {{
 		background: rgba(0, 139, 204, 0.3);
